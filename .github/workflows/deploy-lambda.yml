@@ -112,10 +112,11 @@ jobs:
     steps:
       - name: Update Lambda Function Configuration
         run: |
-          if [[ -n "$LAYER_ARN" ]]; then
-            aws lambda update-function-configuration \
+          echo "var1=${{ needs.deploy.outputs.LAYER_ARN }}"
+          echo "var2=${{ env.LAYER_ARN }}"
+          aws lambda update-function-configuration \
               --function-name my-function \
-              --layers $LAYER_ARN
+              --layers ${{ env.LAYER_ARN }}
           else
             echo "LAYER_ARN is not set"
           fi
