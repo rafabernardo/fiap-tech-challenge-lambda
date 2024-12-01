@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     outputs:
-      LAYER_ARN: ${{ steps.set_var.outputs.LAYER_ARN }}
+      LAYER_ARN: ${{ steps.publish-layer.outputs.LAYER_ARN }}
     env:
       AWS_REGION: us-east-1
 
@@ -107,7 +107,6 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-      LAYER_ARN: ${{ needs.deploy.outputs.LAYER_ARN }}
 
     steps:
       - name: Update Lambda Function Configuration
@@ -117,6 +116,3 @@ jobs:
           aws lambda update-function-configuration \
               --function-name my-function \
               --layers ${{ env.LAYER_ARN }}
-          else
-            echo "LAYER_ARN is not set"
-          fi
