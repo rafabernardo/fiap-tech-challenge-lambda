@@ -26,17 +26,11 @@ jobs:
       - name: Check requirements.txt Changes
         id: requirements-check
         run: |
-          echo $(git rev-list --count HEAD)
-          if [ $(git rev-list --count HEAD) -gt 1 ]; then
-            if git diff --quiet HEAD~1 HEAD -- requirements.txt; then
-              echo "requirements_changed=false" >> $GITHUB_ENV
-            else
-              echo "requirements_changed=true" >> $GITHUB_ENV
-            fi
+          echo $(git diff --name-only HEAD | grep 'requirements.txt')
+          if git diff --name-only HEAD | grep -q 'requirements.txt'; then
+            echo "requirements_changed=false" >> $GITHUB_ENV
           else
-            # If there's only one commit, assume requirements.txt exists
             echo "requirements_changed=true" >> $GITHUB_ENV
-            echo "If there's only one commit, assume requirements.txt exists"
           fi
 
       # 4. Conditionally Package Dependencies for Layer
