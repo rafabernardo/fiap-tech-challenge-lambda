@@ -21,6 +21,7 @@ def lambda_handler(event, context):
     try:
         body = json.loads(event.get("body", "{}"))
         cpf = body.get("cpf", "")
+        print(f"CPF: {cpf}")
 
         if not validate_cpf(cpf):
             return {
