@@ -8,8 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    outputs:
-      LAYER_ARN: ${{ steps.publish-layer.outputs.LAYER_ARN }}
     env:
       AWS_REGION: us-east-1
 
@@ -66,14 +64,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-        run: |
-          LAYER_VERSION=$(aws lambda publish-layer-version \
-            --layer-name my-dependencies-layer \
-            --zip-file fileb://layer.zip \
-            --compatible-runtimes python3.9 \
-            --query 'Version' --output text)
-          echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
-          echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION" >> $GITHUB_ENV
+        run: aws lambda publish-layer-version --layer-name my-dependencies-layer --zip-file fileb://layer.zip --compatible-runtimes python3.9
 
       # 7. Package Lambda Function
       - name: Package Lambda Function
@@ -111,8 +102,10 @@ jobs:
     steps:
       - name: Update Lambda Function Configuration
         run: |
-          echo "var1=${{ needs.deploy.outputs.LAYER_ARN }}"
-          echo "var2=${{ env.LAYER_ARN }}"
+          LAYER_ARN=$(aws lambda list-layer-versions \
+            --layer-name my-dependencies-layer \
+            --query 'LayerVersions[0].LayerVersionArn' --output text)
+          echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_ENV
           aws lambda update-function-configuration \
               --function-name my-function \
-              --layers ${{ env.LAYER_ARN }}
+              --layers $LAYER_ARN
