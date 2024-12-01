@@ -110,9 +110,9 @@ jobs:
     steps:
       - name: Update Lambda Function Configuration
         run: |
-          echo "var1=${{ needs.deploy.outputs.LAYER_ARN }}"
-          echo "var2=${{ env.LAYER_ARN }}"
-          echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION" >> $GITHUB_ENV
+          echo "var1=${{ needs.deploy.outputs.LAYER_VERSION }}"
+          echo "var2=${{ env.LAYER_VERSION }}"
+          echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:${{ needs.deploy.outputs.LAYER_VERSION }}" >> $GITHUB_ENV
           aws lambda update-function-configuration \
               --function-name my-function \
-              --layers ${LAYER_ARN}
+              --layers $LAYER_ARN
