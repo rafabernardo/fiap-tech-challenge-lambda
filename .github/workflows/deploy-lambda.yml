@@ -28,13 +28,16 @@ jobs:
         run: |
           if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
             if git diff --quiet HEAD~1 HEAD -- requirements.txt; then
+              echo "enter in git diff"
               echo "requirements_changed=false" >> $GITHUB_ENV
             else
+              echo "enter in else"
               echo "requirements_changed=true" >> $GITHUB_ENV
             fi
           else
             # If there's only one commit, assume requirements.txt exists
             echo "requirements_changed=true" >> $GITHUB_ENV
+            echo "If there's only one commit, assume requirements.txt exists"
           fi
 
       # 4. Conditionally Package Dependencies for Layer
@@ -93,6 +96,7 @@ jobs:
           LAYER_ARN=$(aws lambda list-layer-versions \
             --layer-name my-dependencies-layer \
             --query 'LayerVersions[0].LayerVersionArn' --output text)
+          echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_ENV
 
       - name: Update Lambda Function Code
         env:
