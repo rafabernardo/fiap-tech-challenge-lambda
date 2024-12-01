@@ -1,0 +1,100 @@
+name: Deploy AWS Lambda with Layer for Dependencies
+
+on:
+  push:
+    branches:
+      - main # Trigger workflow on push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Set up Python environment
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      # 3. Check if requirements.txt has changed
+      - name: Check requirements.txt Changes
+        id: requirements-check
+        run: |
+          if git diff --quiet HEAD^ HEAD -- requirements.txt; then
+            echo "requirements_changed=false" >> $GITHUB_ENV
+          else
+            echo "requirements_changed=true" >> $GITHUB_ENV
+          fi
+
+      # 4. Conditionally Package Dependencies for Layer
+      - name: Package Dependencies for Layer
+        if: env.requirements_changed == 'true'
+        run: |
+          mkdir -p layer/python
+          pip install -r requirements.txt -t layer/python
+          cd layer && zip -r ../layer.zip . && cd ..
+
+      # 5. Upload Layer to S3 (if needed)
+      - name: Upload Layer to S3
+        if: env.requirements_changed == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: aws s3 cp layer.zip s3://layer-bucket-fiap-soat/layer.zip
+
+      # 6. Publish Lambda Layer (if needed)
+      - name: Publish Lambda Layer
+        if: env.requirements_changed == 'true'
+        id: publish-layer
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          LAYER_VERSION=$(aws lambda publish-layer-version \
+            --layer-name my-dependencies-layer \
+            --zip-file fileb://layer.zip \
+            --compatible-runtimes python3.9 \
+            --query 'Version' --output text)
+          echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
+        # Default to the latest layer version if no changes
+        continue-on-error: true
+
+      # 7. Package Lambda Function
+      - name: Package Lambda Function
+        run: |
+          cd src && zip -r ../function.zip . && cd ..
+
+      # 8. Upload Lambda Function to S3
+      - name: Upload Function to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: aws s3 cp function.zip s3://lambda-bucket-fiap-soat/function.zip
+
+      # 9. Deploy Lambda Function
+      - name: Deploy Lambda Function
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          # Get the latest layer version
+          LAYER_ARN=$(aws lambda list-layer-versions \
+            --layer-name my-dependencies-layer \
+            --query 'LayerVersions[0].LayerVersionArn' --output text)
+
+          # Update the Lambda function code
+          aws lambda update-function-code \
+            --function-name my-function \
+            --s3-bucket lambda-bucket-fiap-soat \
+            --s3-key function.zip
+
+          # Update the Lambda function configuration with the layer (if layer exists)
+          if [[ -n "$LAYER_ARN" ]]; then
+            aws lambda update-function-configuration \
+              --function-name my-function \
+              --layers $LAYER_ARN
+          fi
