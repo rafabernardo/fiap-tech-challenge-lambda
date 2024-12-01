@@ -26,11 +26,11 @@ jobs:
       - name: Check requirements.txt Changes
         id: requirements-check
         run: |
-          echo $(git diff --name-only HEAD | grep 'requirements.txt')
-          if git diff --name-only HEAD | grep -q 'requirements.txt'; then
-            echo "requirements_changed=true" >> $GITHUB_ENV
-          else
+          echo $(git diff --name-only HEAD^ HEAD | grep 'requirements.txt')
+          if git diff --name-only HEAD^ HEAD | grep -q 'requirements.txt'; then
             echo "requirements_changed=false" >> $GITHUB_ENV
+          else
+            echo "requirements_changed=true" >> $GITHUB_ENV
           fi
 
       # 4. Conditionally Package Dependencies for Layer
