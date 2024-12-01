@@ -71,7 +71,7 @@ jobs:
             --compatible-runtimes python3.9 \
             --query 'Version' --output text)
           echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
-          echo "::set-output name=LAYER_ARN::arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION"
+          echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION" >> $GITHUB_ENV
 
       # 7. Package Lambda Function
       - name: Package Lambda Function
