@@ -12,6 +12,10 @@ jobs:
       AWS_REGION: us-east-1
 
     steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
       # 1. Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -22,12 +26,18 @@ jobs:
         with:
           python-version: 3.9
 
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v14.6
+
       # 3. Check if requirements.txt has changed
       - name: Check requirements.txt Changes
         id: requirements-check
         run: |
-          echo $(git diff --name-only HEAD^ HEAD | grep 'requirements.txt')
-          if git diff --name-only HEAD^ HEAD | grep -q 'requirements.txt'; then
+          echo $(git diff --name-only HEAD^1 HEAD | grep 'requirements.txt')
+          echo $(git diff --name-only ${{ github.event.after }} ${{ github.event.before }})
+          echo $({{ steps.changed-files.outputs.all_changed_files }})
+          if git diff --name-only HEAD^1 HEAD | grep -q 'requirements.txt'; then
             echo "requirements_changed=false" >> $GITHUB_ENV
           else
             echo "requirements_changed=true" >> $GITHUB_ENV
