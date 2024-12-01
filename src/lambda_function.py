@@ -17,7 +17,7 @@ def call_mock_endpoint(cpf):
     return response
 
 
-def lambda_handler(event):
+def lambda_handler(event, context):
     try:
         body = json.loads(event.get("body", "{}"))
         cpf = body.get("cpf", "")
