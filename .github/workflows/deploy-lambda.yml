@@ -113,6 +113,7 @@ jobs:
           echo "var1=${{ needs.deploy.outputs.LAYER_VERSION }}"
           echo "var2=${{ env.LAYER_VERSION }}"
           echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:${{ needs.deploy.outputs.LAYER_VERSION }}" >> $GITHUB_ENV
+          echo $LAYER_ARN
           aws lambda update-function-configuration \
               --function-name my-function \
               --layers $LAYER_ARN
