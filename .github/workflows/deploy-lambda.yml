@@ -73,7 +73,7 @@ jobs:
             --compatible-runtimes python3.9 \
             --query 'Version' --output text)
           echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
-          echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION" >> $GITHUB_ENV
+          echo "LAYER_ARN=arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION" >> $GITHUB_OUTPUT
 
       # 7. Package Lambda Function
       - name: Package Lambda Function
@@ -115,4 +115,4 @@ jobs:
           echo "var2=${{ env.LAYER_ARN }}"
           aws lambda update-function-configuration \
               --function-name my-function \
-              --layers ${{ env.LAYER_ARN }}
+              --layers ${{ needs.deploy.outputs.LAYER_ARN }}
