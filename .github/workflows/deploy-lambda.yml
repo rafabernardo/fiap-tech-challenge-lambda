@@ -12,10 +12,6 @@ jobs:
       AWS_REGION: us-east-1
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
       # 1. Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -26,9 +22,13 @@ jobs:
         with:
           python-version: 3.9
 
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # OR "2" -> To retrieve the preceding commit.
+
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v14.6
+        uses: tj-actions/changed-files@v45
 
       # 3. Check if requirements.txt has changed
       - name: Check requirements.txt Changes
