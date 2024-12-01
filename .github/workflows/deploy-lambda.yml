@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      LAYER_ARN: ${{ steps.set_var.outputs.LAYER_ARN }}
     env:
       AWS_REGION: us-east-1
 
