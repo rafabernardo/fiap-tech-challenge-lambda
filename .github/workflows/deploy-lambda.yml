@@ -106,7 +106,6 @@ jobs:
             --layer-name my-dependencies-layer \
             --query 'LayerVersions[0].LayerVersionArn' --output text)
           echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_ENV
-          echo $LAYER_ARN
           aws lambda update-function-configuration \
               --function-name my-function \
               --layers $LAYER_ARN
