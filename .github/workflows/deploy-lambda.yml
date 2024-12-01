@@ -73,17 +73,17 @@ jobs:
 
       # 7. Package Lambda Function
       - name: Package Lambda Function
-        run: |
-          cd src && zip -r ../function.zip . && cd ..
+        run: cd src && zip -r ../function.zip . && cd ..
 
-      # 8. Upload Lambda Function to S3
-        - name: Upload Function to S3
+      # 8. Upload Function to S3
+      - name: Upload Function to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         run: aws s3 cp function.zip s3://lambda-bucket-fiap-soat/function.zip
 
+      # 9. Update Lambda Function Code
       - name: Update Lambda Function Code
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
