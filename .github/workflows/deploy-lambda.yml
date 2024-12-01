@@ -28,17 +28,13 @@ jobs:
         run: |
           if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
             if git diff --quiet HEAD~1 HEAD -- requirements.txt; then
-              echo "enter in git diff"
               echo "requirements_changed=false" >> $GITHUB_ENV
             else
-              echo "enter in else"
               echo "requirements_changed=true" >> $GITHUB_ENV
             fi
           else
             # If there's only one commit, assume requirements.txt exists
             echo "requirements_changed=true" >> $GITHUB_ENV
-            echo "If there's only one commit, assume requirements.txt exists"
-          fi
 
       # 4. Conditionally Package Dependencies for Layer
       - name: Package Dependencies for Layer
@@ -72,6 +68,7 @@ jobs:
             --compatible-runtimes python3.9 \
             --query 'Version' --output text)
           echo "LAYER_VERSION=$LAYER_VERSION" >> $GITHUB_ENV
+          echo "::set-output name=LAYER_ARN::arn:aws:lambda:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:layer:my-dependencies-layer:$LAYER_VERSION"
 
       # 7. Package Lambda Function
       - name: Package Lambda Function
@@ -79,24 +76,12 @@ jobs:
           cd src && zip -r ../function.zip . && cd ..
 
       # 8. Upload Lambda Function to S3
-      - name: Upload Function to S3
+        - name: Upload Function to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         run: aws s3 cp function.zip s3://lambda-bucket-fiap-soat/function.zip
-
-      # 9. Deploy Lambda Function
-      - name: Get Latest Layer Version
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-        run: |
-          LAYER_ARN=$(aws lambda list-layer-versions \
-            --layer-name my-dependencies-layer \
-            --query 'LayerVersions[0].LayerVersionArn' --output text)
-          echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_ENV
 
       - name: Update Lambda Function Code
         env:
@@ -109,17 +94,23 @@ jobs:
             --s3-bucket lambda-bucket-fiap-soat \
             --s3-key function.zip
 
+  update-configuration:
+    runs-on: ubuntu-latest
+    needs: deploy
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      LAYER_ARN: ${{ needs.deploy.outputs.LAYER_ARN }}
+
+    steps:
       - name: Update Lambda Function Configuration
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         run: |
-          echo "LAYER_ARN: $LAYER_ARN"
           if [[ -n "$LAYER_ARN" ]]; then
             aws lambda update-function-configuration \
               --function-name my-function \
               --layers $LAYER_ARN
           else
-            echo "No Layer ARN provided"
+            echo "LAYER_ARN is not set"
           fi
