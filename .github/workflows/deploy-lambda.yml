@@ -36,9 +36,11 @@ jobs:
         env:
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          for file in ${ALL_CHANGED_FILES}; do
-            echo "$file was changed"
-          done
+          if echo "$ALL_CHANGED_FILES" | grep -q "requirements.txt"; then
+            echo "requirements_changed=true" >> $GITHUB_ENV
+          else
+            echo "requirements_changed=false" >> $GITHUB_ENV
+          fi
 
       # 4. Conditionally Package Dependencies for Layer
       - name: Package Dependencies for Layer
