@@ -35,6 +35,8 @@ jobs:
           else
             # If there's only one commit, assume requirements.txt exists
             echo "requirements_changed=true" >> $GITHUB_ENV
+            echo "If there's only one commit, assume requirements.txt exists"
+          fi
 
       # 4. Conditionally Package Dependencies for Layer
       - name: Package Dependencies for Layer
