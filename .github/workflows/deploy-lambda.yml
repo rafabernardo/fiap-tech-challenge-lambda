@@ -26,6 +26,7 @@ jobs:
       - name: Check requirements.txt Changes
         id: requirements-check
         run: |
+          echo $(git rev-list --count HEAD)
           if [ $(git rev-list --count HEAD) -gt 1 ]; then
             if git diff --quiet HEAD~1 HEAD -- requirements.txt; then
               echo "requirements_changed=false" >> $GITHUB_ENV
