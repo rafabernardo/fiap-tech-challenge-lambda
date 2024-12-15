@@ -72,12 +72,16 @@ jobs:
 
       # 8. Upload Layer to S3 (if requirements.txt changed)
       - name: Upload Layer to S3
+        env:
+          AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
         if: env.requirements_changed == 'true'
         run: |
           aws s3 cp layer.zip s3://${AWS_BUCKET}/layers/dependencies-layer.zip
 
       # 9. Upload Function to S3 (if code changed)
       - name: Upload Function to S3
+        env:
+          AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
         run: aws s3 cp function.zip s3://${AWS_BUCKET}/functions/lambda-function.zip
 
       # 0. Update Lambda Function Code
