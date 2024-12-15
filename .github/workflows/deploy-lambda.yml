@@ -1,4 +1,4 @@
-name: Deploy AWS Lambda with Layer for Dependencies
+name: Deploy AWS Lambda with Terraform
 
 on:
   push:
@@ -10,27 +10,41 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
 
     steps:
       # 1. Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 2. Set up Python environment
+      # 2. Install Terraform CLI
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.2 # Replace with the specific version you are using
+          terraform_wrapper: false
+
+      # 3. Run Terraform to Provision Infrastructure
+      - name: Terraform Init and Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+
+      # 4. Set up Python environment
       - name: Set Up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: 3.10
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # OR "2" -> To retrieve the preceding commit.
-
+      # 5. Check for changes in dependencues
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v45
 
-      # 3. Check if requirements.txt has changed
       - name: Check requirements.txt Changes
         id: requirements-check
         env:
@@ -42,7 +56,7 @@ jobs:
             echo "requirements_changed=false" >> $GITHUB_ENV
           fi
 
-      # 4. Conditionally Package Dependencies for Layer
+      # 6. Conditionally Package Dependencies for Layer
       - name: Package Dependencies for Layer
         if: env.requirements_changed == 'true'
         run: |
@@ -50,66 +64,26 @@ jobs:
           pip install -r requirements.txt -t layer/python
           cd layer && zip -r ../layer.zip . && cd ..
 
-      # 5. Upload Layer to S3 (if needed)
+      # 7. Package Lambda Function (if code changed)
+      - name: Package Lambda Function
+        if: env.requirements_changed == 'true'
+        run: |
+          cd src && zip -r ../function.zip . && cd ..
+
+      # 8. Upload Layer to S3 (if requirements.txt changed)
       - name: Upload Layer to S3
         if: env.requirements_changed == 'true'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-        run: aws s3 cp layer.zip s3://layer-bucket-fiap-soat/layer.zip
+        run: |
+          aws s3 cp layer.zip s3://${AWS_BUCKET}/layers/dependencies-layer.zip
 
-      # 6. Publish Lambda Layer (if needed)
-      - name: Publish Lambda Layer
-        if: env.requirements_changed == 'true'
-        id: publish-layer
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-        run: aws lambda publish-layer-version --layer-name my-dependencies-layer --zip-file fileb://layer.zip --compatible-runtimes python3.9
-
-      # 7. Package Lambda Function
-      - name: Package Lambda Function
-        run: cd src && zip -r ../function.zip . && cd ..
-
-      # 8. Upload Function to S3
+      # 9. Upload Function to S3 (if code changed)
       - name: Upload Function to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-        run: aws s3 cp function.zip s3://lambda-bucket-fiap-soat/function.zip
+        run: aws s3 cp function.zip s3://${AWS_BUCKET}/functions/lambda-function.zip
 
-      # 9. Update Lambda Function Code
+      # 0. Update Lambda Function Code
       - name: Update Lambda Function Code
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         run: |
           aws lambda update-function-code \
-            --function-name my-function \
-            --s3-bucket lambda-bucket-fiap-soat \
-            --s3-key function.zip
-
-  update-configuration:
-    runs-on: ubuntu-latest
-    needs: deploy
-    env:
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-
-    steps:
-      - name: Update Lambda Function Configuration
-        run: |
-          LAYER_ARN=$(aws lambda list-layer-versions \
-            --layer-name my-dependencies-layer \
-            --query 'LayerVersions[0].LayerVersionArn' --output text)
-          echo "LAYER_ARN=$LAYER_ARN" >> $GITHUB_ENV
-          aws lambda update-function-configuration \
-              --function-name my-function \
-              --layers $LAYER_ARN
+            --function-name lambda-function \
+            --s3-bucket ${AWS_BUCKET} \
+            --s3-key lambda-function.zip
