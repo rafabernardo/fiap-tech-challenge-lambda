@@ -5,3 +5,7 @@ variable "aws_region" {
 variable "lambda_bucket_name" {
   default = "lambda-artifacts-fiap-soat"
 }
+
+variable "lab_role" {
+  default = "LabRole"
+}

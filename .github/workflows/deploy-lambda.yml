@@ -27,63 +27,49 @@ jobs:
           terraform_version: 1.10.2 # Replace with the specific version you are using
           terraform_wrapper: false
 
-      # 3. Run Terraform to Provision Infrastructure
+
+
+      # 3. Set up Python environment
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+
+      # 4. Conditionally Package Dependencies for Layer
+      - name: Package Dependencies for Layer
+        run: |
+          mkdir -p layer/python
+          pip install -r requirements.txt -t layer/python
+          cd layer && zip -r ../layer.zip . && cd ..
+
+      # 5. Package Lambda Function
+      - name: Package Lambda Function
+        run: |
+          cd src && zip -r ../function.zip . && cd ..
+
+          
+      # 6. Run Terraform to Provision Infrastructure
       - name: Terraform Init and Apply
         run: |
           cd terraform
           terraform init
           terraform apply -auto-approve
 
-      # 4. Set up Python environment
-      - name: Set Up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-
-      # 5. Check for changes in dependencues
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v45
-
-      - name: Check requirements.txt Changes
-        id: requirements-check
-        env:
-          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
-        run: |
-          if echo "$ALL_CHANGED_FILES" | grep -q "requirements.txt"; then
-            echo "requirements_changed=true" >> $GITHUB_ENV
-          else
-            echo "requirements_changed=false" >> $GITHUB_ENV
-          fi
-
-      # 6. Conditionally Package Dependencies for Layer
-      - name: Package Dependencies for Layer
-        if: env.requirements_changed == 'true'
-        run: |
-          mkdir -p layer/python
-          pip install -r requirements.txt -t layer/python
-          cd layer && zip -r ../layer.zip . && cd ..
-
-      # 7. Package Lambda Function (if code changed)
-      - name: Package Lambda Function
-        run: |
-          cd src && zip -r ../function.zip . && cd ..
-
-      # 8. Upload Layer to S3 (if requirements.txt changed)
+      # 7. Upload Layer to S3
       - name: Upload Layer to S3
         env:
           AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
-        if: env.requirements_changed == 'true'
         run: |
-          aws s3 cp layer.zip s3://${AWS_BUCKET}/layers/dependencies-layer.zip
-
-      # 9. Upload Function to S3 (if code changed)
+          aws s3 cp layer.zip s3://${AWS_BUCKET}/layers/lambda-layer.zip
+  
+      # 8. Upload Function to S3
       - name: Upload Function to S3
         env:
           AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
         run: aws s3 cp function.zip s3://${AWS_BUCKET}/functions/lambda-function.zip
-
-      # 0. Update Lambda Function Code
+          
+      # 9. Update Lambda Function Code
       - name: Update Lambda Function Code
         run: |
           aws lambda update-function-code \
