@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "lambda_bucket" {
   bucket = var.lambda_bucket_name
+  force_destroy = true
 }
 
 resource "aws_s3_object" "lambda_layer_zip" {
