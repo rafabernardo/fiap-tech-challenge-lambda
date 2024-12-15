@@ -75,4 +75,4 @@ jobs:
           aws lambda update-function-code \
             --function-name lambda-function \
             --s3-bucket ${AWS_BUCKET} \
-            --s3-key lambda-function.zip
+            --s3-key functions/lambda-function.zip
