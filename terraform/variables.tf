@@ -9,3 +9,6 @@ variable "lambda_bucket_name" {
 variable "lab_role" {
   default = "LabRole"
 }
+variable "vpcCidr" {
+  default = "172.31.0.0/16"
+}

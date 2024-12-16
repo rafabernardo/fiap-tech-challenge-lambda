@@ -36,3 +36,4 @@ resource "aws_lambda_function" "lambda" {
 
   depends_on = [aws_s3_object.lambda_layer_zip]
 }
+
